@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AE Remote Automation</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>After Effects Render</h1>
+      <p class="subtitle">Задайте текст, цвет и изображение — ролик отрендерится через очередь After Effects</p>
+    </header>
+
+    <main class="layout">
+      <section class="panel form-panel">
+        <form id="render-form">
+          <div class="field">
+            <label for="templateId">Шаблон</label>
+            <select id="templateId" name="templateId" required></select>
+          </div>
+
+          <div id="dynamic-fields"></div>
+
+          <button type="submit" id="submit-btn">Запустить рендер</button>
+        </form>
+
+        <div id="status-box" class="status-box hidden">
+          <div class="status-label">Статус</div>
+          <div id="status-text" class="status-text">—</div>
+          <div id="error-text" class="error-text hidden"></div>
+        </div>
+      </section>
+
+      <section class="panel result-panel">
+        <h2>Результат</h2>
+        <div id="result-empty" class="result-empty">Видео появится здесь после завершения рендера</div>
+        <video id="result-video" class="hidden" controls playsinline></video>
+        <a id="download-link" class="download-link hidden" download="render.mp4">Скачать видео</a>
+      </section>
+    </main>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

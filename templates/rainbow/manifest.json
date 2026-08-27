@@ -1,0 +1,46 @@
+{
+  "id": "rainbow",
+  "name": "Rainbow Text (Main)",
+  "mode": "aep",
+  "aep": "template.aep",
+  "comp": "Main",
+  "fields": [
+    {
+      "id": "top_text",
+      "type": "text",
+      "label": "Top text",
+      "layer": "top_text",
+      "default": "КАЖДЫЙ ОХОТНИК"
+    },
+    {
+      "id": "main_text",
+      "type": "text",
+      "label": "Main text",
+      "layer": "main_text",
+      "default": "ЖЕЛАЕТ ЗНАТЬ"
+    },
+    {
+      "id": "bottom_text",
+      "type": "text",
+      "label": "Bottom text",
+      "layer": "bottom_text",
+      "default": "ГДЕ СИДИТ ФАЗАН"
+    },
+    {
+      "id": "bg_color",
+      "type": "color",
+      "label": "Background color",
+      "layer": "bg",
+      "target": "shape",
+      "default": "#4c1d95"
+    },
+    {
+      "id": "box_color",
+      "type": "color",
+      "label": "Main box color",
+      "layer": "main_text_bg",
+      "target": "shape",
+      "default": "#ffffff"
+    }
+  ]
+}

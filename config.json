@@ -1,0 +1,11 @@
+{
+  "aePath": "C:\\Program Files\\Adobe\\Adobe After Effects 2025\\Support Files\\AfterFX.exe",
+  "noui": false,
+  "forceRestartAe": true,
+  "port": 3000,
+  "paramsPath": "templates/rainbow/params.json",
+  "aepPath": "templates/rainbow/template.aep",
+  "compName": "Main",
+  "previewTime": 1,
+  "previewPath": "data/preview/preview.png"
+}

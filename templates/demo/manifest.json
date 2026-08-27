@@ -1,0 +1,32 @@
+{
+  "id": "demo",
+  "name": "Demo Template (generated)",
+  "mode": "generate",
+  "comp": "Demo Comp",
+  "duration": 5,
+  "fields": [
+    {
+      "id": "title",
+      "type": "text",
+      "label": "Title",
+      "default": "Hello World"
+    },
+    {
+      "id": "subtitle",
+      "type": "text",
+      "label": "Subtitle",
+      "default": "After Effects Render"
+    },
+    {
+      "id": "color",
+      "type": "color",
+      "label": "Background Color",
+      "default": "#4f46e5"
+    },
+    {
+      "id": "image",
+      "type": "image",
+      "label": "Logo / Image"
+    }
+  ]
+}

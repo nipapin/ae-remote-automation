@@ -1,0 +1,5 @@
+node_modules/
+data/jobs/*/
+data/queue.json.tmp
+*.log
+.DS_Store
