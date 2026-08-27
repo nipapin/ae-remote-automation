@@ -52,7 +52,13 @@ Save the project as:
 templates/rainbow/template.aep
 ```
 
-Then refresh the page and choose **Rainbow Text (Main)**.
+Point After Effects expressions / your AE JSON reader at:
+
+```
+templates/rainbow/params.json
+```
+
+The web form edits this file and then asks AE for a PNG preview at **1 second** of composition **Main**.
 
 ## Flow
 

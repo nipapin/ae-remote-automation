@@ -1,5 +1,8 @@
 node_modules/
 data/jobs/*/
+data/preview/*.png
+data/preview/*.log
+data/preview/status.json
 data/queue.json.tmp
 *.log
 .DS_Store

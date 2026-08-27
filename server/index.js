@@ -5,8 +5,23 @@ const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
 
 const { addJob, getJob, hasQueuedJobs, hasProcessingJobs, updateJob, getLatestQueuedJob } = require('./queue');
-const { launchAfterEffects, isAeRunning, loadConfig, ROOT } = require('./ae');
+const {
+  launchAfterEffects,
+  isAeRunning,
+  loadConfig,
+  ROOT,
+  SCRIPT_PATH,
+  PREVIEW_SCRIPT_PATH,
+} = require('./ae');
 const { listTemplates, getTemplate } = require('./templates');
+const {
+  readParams,
+  writeParams,
+  getParamsPath,
+  getPreviewPath,
+  writePreviewStatus,
+  readPreviewStatus,
+} = require('./params');
 
 const app = express();
 const config = loadConfig();
@@ -14,13 +29,13 @@ const PORT = config.port || 3000;
 
 const JOBS_DIR = path.join(ROOT, 'data', 'jobs');
 
+app.use(express.json({ limit: '2mb' }));
 app.use(express.static(path.join(ROOT, 'public')));
 
 const upload = multer({
   storage: multer.diskStorage({
     destination(req, file, cb) {
-      const jobId = req.jobId;
-      const dir = path.join(JOBS_DIR, jobId);
+      const dir = path.join(JOBS_DIR, req.jobId);
       fs.mkdirSync(dir, { recursive: true });
       cb(null, dir);
     },
@@ -36,13 +51,12 @@ function scheduleAeIfNeeded() {
   if (!hasQueuedJobs() || isAeRunning() || hasProcessingJobs()) return;
 
   const result = launchAfterEffects(() => {
-    // Child often exits immediately when AE was already open; wait and retry if still queued
     setTimeout(() => {
       if (hasQueuedJobs() && !hasProcessingJobs()) {
         scheduleAeIfNeeded();
       }
     }, 3000);
-  });
+  }, { scriptPath: SCRIPT_PATH });
 
   if (!result.started && result.reason !== 'already_running') {
     const job = getLatestQueuedJob();
@@ -58,6 +72,111 @@ function scheduleAeIfNeeded() {
     }
   }
 }
+
+function triggerPreview() {
+  const cfg = loadConfig();
+  const previewPath = getPreviewPath();
+  fs.mkdirSync(path.dirname(previewPath), { recursive: true });
+
+  writePreviewStatus({
+    status: 'queued',
+    updatedAt: new Date().toISOString(),
+  });
+
+  if (isAeRunning()) {
+    return { started: false, reason: 'already_running' };
+  }
+
+  const aepRel = cfg.aepPath || 'templates/rainbow/template.aep';
+  const aepAbs = path.isAbsolute(aepRel) ? aepRel : path.join(ROOT, aepRel);
+  if (!fs.existsSync(aepAbs)) {
+    writePreviewStatus({
+      status: 'error',
+      error: `AEP not found: ${aepRel}. Save project as templates/rainbow/template.aep`,
+      updatedAt: new Date().toISOString(),
+    });
+    return { started: false, reason: 'aep_not_found' };
+  }
+
+  const result = launchAfterEffects(() => {
+    // status.json is updated by the ExtendScript
+  }, { scriptPath: PREVIEW_SCRIPT_PATH });
+
+  if (!result.started && result.reason !== 'already_running') {
+    writePreviewStatus({
+      status: 'error',
+      error: result.reason || 'Failed to launch After Effects',
+      updatedAt: new Date().toISOString(),
+    });
+  }
+
+  return result;
+}
+
+app.get('/api/params', (req, res) => {
+  try {
+    res.json({
+      path: getParamsPath().replace(/\\/g, '/'),
+      data: readParams(),
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/params', (req, res) => {
+  try {
+    const body = req.body;
+    if (!body || !Array.isArray(body.layers)) {
+      return res.status(400).json({ error: 'Body must be { layers: [...] }' });
+    }
+
+    const savedPath = writeParams({ layers: body.layers });
+    const preview = req.query.preview !== '0';
+    let previewResult = { started: false, reason: 'skipped' };
+
+    if (preview) {
+      previewResult = triggerPreview();
+    }
+
+    res.json({
+      ok: true,
+      path: savedPath.replace(/\\/g, '/'),
+      preview: previewResult,
+      previewStatus: readPreviewStatus(),
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/preview', (req, res) => {
+  const result = triggerPreview();
+  res.json({
+    ok: result.started || result.reason === 'already_running',
+    ...result,
+    previewStatus: readPreviewStatus(),
+  });
+});
+
+app.get('/api/preview/status', (req, res) => {
+  const status = readPreviewStatus();
+  const previewPath = getPreviewPath();
+  res.json({
+    ...status,
+    ready: status.status === 'done' && fs.existsSync(previewPath),
+    previewUrl: fs.existsSync(previewPath) ? `/api/preview?t=${Date.now()}` : null,
+  });
+});
+
+app.get('/api/preview', (req, res) => {
+  const previewPath = getPreviewPath();
+  if (!fs.existsSync(previewPath)) {
+    return res.status(404).json({ error: 'Preview not ready' });
+  }
+  res.setHeader('Cache-Control', 'no-store');
+  res.sendFile(path.resolve(previewPath));
+});
 
 app.get('/api/templates', (req, res) => {
   const templates = listTemplates().map((t) => ({
@@ -131,16 +250,14 @@ app.get('/api/jobs/:id', (req, res) => {
     return res.status(404).json({ error: 'Job not found' });
   }
 
-  const payload = {
+  res.json({
     id: job.id,
     status: job.status,
     templateId: job.templateId,
     error: job.error || null,
     createdAt: job.createdAt,
     outputUrl: job.status === 'done' ? `/api/jobs/${job.id}/video` : null,
-  };
-
-  res.json(payload);
+  });
 });
 
 app.get('/api/jobs/:id/video', (req, res) => {
@@ -175,9 +292,12 @@ app.get('/api/health', (req, res) => {
     aePath: findAfterEffectsPath(),
     aeRunning: isAeRunning(),
     queued: hasQueuedJobs(),
+    paramsPath: getParamsPath(),
+    preview: readPreviewStatus(),
   });
 });
 
 app.listen(PORT, () => {
   console.log(`AE Remote Automation running at http://localhost:${PORT}`);
+  console.log(`Params: ${getParamsPath()}`);
 });
